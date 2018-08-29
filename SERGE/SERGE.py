@@ -36,7 +36,7 @@ print "Parameters - History length, Maximum Iterations, Epsilon, Group category,
 
 def read_input():
 	#Read events fromt the input file
-	f=open('./../data/input_events.txt',"r")
+	f=open('./../data/sampled_events.txt',"r")
 	all_event=[]  
 
 	count_cat={}
@@ -598,6 +598,9 @@ def create_graph(target,tgroup,time1,index):
 	for i in range(0,len(ven_list)):
 		if ven_list[i]==target_ven:
 			val=vvec[i]
+	
+	if target_ven not in ven_list:
+		return 99999 #If target venue is missing 	
 			
 	rank=1
 	for i in range(0,len(vvec)):
@@ -669,7 +672,7 @@ for j in range(length,len(all_event)):
 	if ev[4]==0: #Consider only successful events for evaluation
 		continue
 	all_count+=1.0	
-	print "\nProcessing Event ",cc
+	print "\nProcessing Event ",all_count
 	rank=create_graph(event,tgroup,time1, j) #Calling the random walk function
 	print "Rank of the target venue ", rank
 	if rank>-1: 
@@ -697,4 +700,3 @@ end_time=time.time()
 print "Event Count, Recall@1, Recall@5, Recall@10, Recall@15, Recall@20, Recall@50, Recall@100, MIR ", cc, float(r1)/float(cc),float(r5)/float(cc),float(r10)/float(cc),float(r15)/float(cc),float(r20)/float(cc),float(r50)/float(cc),float(r100)/float(cc), MIR/float(cc)	
 
 print "\n\nTime taken per event in seconds ",float(end_time-start_time)/all_count	
-

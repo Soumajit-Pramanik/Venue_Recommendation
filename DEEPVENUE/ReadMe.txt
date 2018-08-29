@@ -1,4 +1,4 @@
-DeepVenue.py implements the code for the "DeepVenue" model proposed in our paper.
+DEEPVENUE.py implements the code for the "DeepVenue" model proposed in our paper.
 
 ####################################################################################################################
 1. Instructions before running the code:
@@ -17,8 +17,8 @@ c) DROP = Droupout
 d) BATCH_SIZE = Minibatch Size
 e) LEARNING_RATE
 f) TRAINING_ITERATION = Number of Epochs used for training
-g) CATEGORY = The category of Meetup groups for which recommendation is needed; Use -1 for any category, 0 for "Activity" category, 1 for "Hobby" category, 2 for "Social" category, 3 for "Entertainment" category and 4 for "Tech." category
-h) NEW_FLAG = Flag indicating whether we wish to evaluate only for new events; Set this to 1 if the evaluation has to be done only for new events
+g) CATEGORY -- The category of Meetup groups for which recommendation is needed; Use -1 for any category, 0 for "Activity" category, 1 for "Hobby" category, 2 for "Social" category, 3 for "Entertainment" category and 4 for "Tech." category
+h) NEW_FLAG -- Flag indicating whether we wish to evaluate only for new events; Set this to 1 if the evaluation has to be done only for new events
 
 ####################################################################################################################
 3. How to run?

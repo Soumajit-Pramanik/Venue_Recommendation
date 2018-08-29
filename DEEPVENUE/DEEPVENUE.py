@@ -31,7 +31,7 @@ BATCH_SIZE=128
 #Learning Rate
 LEARNING_RATE=0.005
 #Number of Epochs used for training
-TRAINING_ITERATION=20
+TRAINING_ITERATION=2000
 #The category of Meetup groups for which recommendation is needed; Use -1 for any category, 0 for "Activity" category, 1 for "Hobby" category, 2 for "Social" category, 3 for "Entertainment" category and 4 for "Technical" category
 CATEGORY=-1 
 #Flag indicating whether we wish to evaluate only for new events; Set this to 1 if the evaluation has to be done only for new events 
@@ -105,15 +105,12 @@ def model6(x):
 		h3 = Dense(H_DIMS, activation= C.relu)(x)
 		return h3
 
-'''
 #Final dense layer for combining scores from all three modules 
 def final_model(x):
 	with default_options(init = glorot_uniform()):
-		h1 = Dense(1, activation= C.sigmoid)(x)
-		#h2 = Dense(1, activation= C.sigmoid)(h1)
-		#h2 = Dropout(0.2)(h1)		
+		h1 = Dense(1, activation= C.relu)(x)
 		return h1	
-'''
+
 
 #Returns 0 if the target venue is never used earlier by the group hosting the target event
 def check_new_ven(grp_event, event, grp,edata,etime):
@@ -170,7 +167,7 @@ def get_venue_vec(vdata,ven,etime, eT,esucc, thres, edesc,gvec,egroup):
 def read_input(gvec, etime, egroup, edata, vdata, vset, e_succ, edesc, ven_grp, gcat):
 	#Read the input events; In the file, each line consists of a sequence of maximum 101 events, the first 100 events are similar to the last one which is the target event. For each event the event-id, corresponding group-id, venue-id, time and succss label is provided.
 	
-	f=open('./data/selected_events1.txt','r')
+	f=open('./../data/sampled_events.txt','r')
 	for line1 in f:
 		line=(line1.strip()).split()
 		idd=int((len(line)-4)/5) #Number of events in each sequence
@@ -221,7 +218,8 @@ def read_input(gvec, etime, egroup, edata, vdata, vset, e_succ, edesc, ven_grp, 
 				vvx.append(ven_grp[venue][egroup[event]][0])
 				vvx.append(ven_grp[venue][egroup[event]][1])
 				vvx.append(ven_grp[venue][egroup[event]][2])
-				vvx.append(ven_grp[venue][egroup[event]][3])	
+				vvx.append(ven_grp[venue][egroup[event]][3])
+				
 			
 				#Read the representation of target event's host group
 				for gg1 in gvec[egroup[event]]:
@@ -260,11 +258,6 @@ def read_input(gvec, etime, egroup, edata, vdata, vset, e_succ, edesc, ven_grp, 
 	all_list1=[]
 	
 	for i in range(0,len(X1)):
-		'''
-		#all_list.append((X1[i],Y1[i],V1[i],S1[i],E1[i],VD[i],ED[i],EID[i]))	
-		if edata[EID[i]]!=V1[i]:
-			print "Goray Gondogol 1"
-		'''	
 		#insert unsuccessful events to all_list0
 		if Y1[i][0]==0:
 			all_list0.append((X1[i],Y1[i],V1[i],S1[i],E1[i],VD[i],ED[i],EID[i],G1[i],GD[i]))
@@ -275,16 +268,18 @@ def read_input(gvec, etime, egroup, edata, vdata, vset, e_succ, edesc, ven_grp, 
 
 	print "Reading input files done"
 	print "Number of Unsuccessful and Successful events in the dataset - ",len(all_list0),len(all_list1)
-
+	
+	
 	#Find minimum of both
 	mm=min(len(all_list0),len(all_list1))
-
-	#Consider same number of Unsuccessful and Successful events; Choose random sample of mm events from all_list0 if it has higher length than all_list1 or vice versa 
-	if len(all_list0) <len(all_list1):
-		all_list1=random.sample(all_list1,mm)
-	else:	
-		all_list0=random.sample(all_list0,mm)
-
+	
+	if mm>=200:
+		#Consider same number of Unsuccessful and Successful events; Choose random sample of mm events from all_list0 if it has higher length than all_list1 or vice versa 
+		if len(all_list0) <len(all_list1):
+			all_list1=random.sample(all_list1,mm)
+		else:	
+			all_list0=random.sample(all_list0,mm)
+			
 	all_list=all_list0+all_list1
 	print "Overall number of events for training and testing- ",len(all_list)
 	
@@ -358,62 +353,31 @@ Y1=[]  #Stores the success label of the target event
 print "Reading input files initiated ..."
 	
 #Read the representations of each group
-infile=open('./../input/gvec_mtags_500.txt','r')
-gvec={}
-for line in infile:
-	line=(line.strip()).split()
-	gvec[int(line[0])]=[]
-	for ll in range(1,len(line)):
-		gvec[int(line[0])].append(float(line[ll]))
+gvec = pickle.load(open('./../data/gvec','r'))
 	
 #Read the hosting time of each event		
-etime = pickle.load(open('./../input/etime','r'))
+etime = pickle.load(open('./../data/etime','r'))
 
 #Read the event to group mapping for each event
-egroup = pickle.load(open('./../input/egroup','r'))
+egroup = pickle.load(open('./../data/egroup','r'))
 	
 #Read the group category for each group
-gcat = pickle.load(open('./../input/grp_cat','r'))
+gcat = pickle.load(open('./../data/grp_cat','r'))
 	
 #Read the distance between venues and groups; each venue-group pair contains four values- fraction of members staying within 5 miles, 10 miles, 20 miles and 50 miles from the venue 
-ven_grp =pickle.load(open('./../ven_grp','r'))
-			
+ven_grp =pickle.load(open('./../data/ven_grp','r'))
+
 #Read the representation of the events	
-edesc={}
-for line in open('./../input/edescription.txt','r'):
-	line=(line.strip()).split()
-	edesc[line[0]]=[]
-	for ll in range(1,len(line)):
-		edesc[line[0]].append(float(line[ll]))
-			
-infile = open('./../input/edes_new_wnan','r')
-edes = pickle.load(infile)
-infile.close()
-	
-for ev in edes:
-	if ev not in edesc:
-		edesc[ev]=edes[ev]
-	
+edesc = pickle.load(open('./../data/edesc','r'))	
+
 #Read the events hosted by each group
-infile = open('./../input/grp_event.txt','r')
-grp_event={}
-for line in infile:
-	line=(line.strip()).split()
-	grp_event[int(line[0])]=set()
-	for e in range(1,len(line)):
-		grp_event[int(line[0])].add(line[e])
-infile.close()            
-	
+grp_event = pickle.load(open('./../data/grp_event','r'))	
+
 #Read the representations of venues
-vset={}
-for line in open('./../input/raw_venue_vec.txt','r'):
-	line=(line.strip()).split()
-	vset[int(line[0])]=[]
-	for ll in range(1,len(line)):
-		vset[int(line[0])].append(float(line[ll]))
+vset = pickle.load(open('./../data/vset','r'))
 
 #Read the event to venue mapping
-edata=pickle.load(open('./../input/edata','r'))
+edata=pickle.load(open('./../data/edata','r'))
 
 #Create venue to event mapping
 vdata={}
@@ -426,14 +390,14 @@ for event in edata:
 
 		
 #Read success values of events; Estimate the 66.67th percentile of the success values.
-infile = open('./../input/sou_eventatt_grpsize_ratio.pickle','r')
-e_succ = pickle.load(infile)
-infile.close()
+e_succ = pickle.load(open('./../data/e_succ','r'))
 evals=[]
 for ev in e_succ:
 	evals.append(e_succ[ev])
 evals.sort()
 thres=evals[int((2.0*float(len(evals)))/3.0)]
+
+
 
 #Read input events
 all_list=read_input(gvec, etime, egroup, edata, vdata, vset, e_succ, edesc, ven_grp, gcat)
@@ -459,7 +423,8 @@ for i in range(0,len(all_list)):
 	EID.append(all_list[i][7])
 	G1.append(all_list[i][8])
 	GD.append(all_list[i][9])
-			
+
+		
 			
 # # Training
 # Before we can start training we need to bind our input variables for the model and define what optimizer we want to use. For this example we choose the `adam` optimizer. We choose `squared_error` as our loss function.
@@ -495,7 +460,9 @@ v2 = C.losses.cosine_distance(x1m, x5m, name = "simi2")
 g2 = C.losses.cosine_distance(x7m, x8m, name = "simi3")
 
 
-z = v2 * e2 * g2
+z11 = splice(v2,e2)
+z1= splice(z11,g2)
+z= final_model(z1)
 #Target event's success label
 x2 = C.input_variable(1) #Y1
 
@@ -522,7 +489,7 @@ if len(X1)<200:
 	BATCH_SIZE=5
 print "Minibatch size- ",BATCH_SIZE 
 
-# use adam optimizer
+# use adagrad optimizer
 momentum_time_constant = C.momentum_as_time_constant_schedule(BATCH_SIZE / -math.log(0.9)) 
 learner = C.fsadagrad(z.parameters, 
 					  lr = lr_schedule, 
@@ -592,21 +559,6 @@ print "Test Accuracy ",maxacc
 		
 #Calculate Recalls and MIR for testset
 
-'''
-#Read venue vectors
-fp=open('./../raw_venue_vec.txt','r')
-venue_vec={}
-for line in fp:
-	line=(line.strip()).split()		
-	id1=int(line[0])
-	venue_vec[id1]=[]
-	for id2 in range(1,len(line)):
-		venue_vec[id1].append(float(line[id2]))
-print (len(venue_vec))
-vset={}
-vset=venue_vec
-'''
-
 start=int(float(len(X1))*frac)
 
 #Initializing metrics 
@@ -647,6 +599,10 @@ while start<len(X1):
 			g1_batch=[]
 			
 			exx,gvx=get_venue_vec(vdata, id1, etime, ev_id, e_succ, thres, edesc, gvec, egroup)		
+			
+			if len(exx)==0:
+				continue
+				
 			e1_batch.append(exx)
 			g1_batch.append(gvx)
 			
@@ -702,6 +658,9 @@ while start<len(X1):
 	
 end_time=time.time()
 
-print "Event Count, Recall@1, Recall@5, Recall@10, Recall@15, Recall@20, Recall@50, Recall@100, MIR ", cc, float(r1)/float(cc),float(r5)/float(cc),float(r10)/float(cc),float(r15)/float(cc),float(r20)/float(cc),float(r50)/float(cc),float(r100)/float(cc), MIR/float(cc)	
+if cc==0 and NEW_FLAG==1:
+	print "No new venues in the test set. Please try again. "
+else:	
+	print "Event Count, Recall@1, Recall@5, Recall@10, Recall@15, Recall@20, Recall@50, Recall@100, MIR ", cc, float(r1)/float(cc),float(r5)/float(cc),float(r10)/float(cc),float(r15)/float(cc),float(r20)/float(cc),float(r50)/float(cc),float(r100)/float(cc), MIR/float(cc)	
 
-print "\n\nTime taken per event in seconds ",float(end_time-start_time)/all_count	
+	print "\n\nTime taken per event in seconds ",float(end_time-start_time)/all_count	

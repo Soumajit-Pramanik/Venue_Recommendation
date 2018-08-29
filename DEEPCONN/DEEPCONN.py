@@ -17,7 +17,7 @@ from cntk import input_variable, cross_entropy_with_softmax, \
         classification_error, sequence
 import time
 
-#Word vector length for event and venues
+#Word vector lengths for event and venues
 VEC_DIM=300
 HDIM=50
 
@@ -29,7 +29,7 @@ BATCH_SIZE=128
 #Learning Rate
 LEARNING_RATE=0.003
 #Number of Epochs used for training
-TRAINING_ITERATION=100
+TRAINING_ITERATION=2000
 #The category of Meetup groups for which recommendation is needed; Use -1 for any category, 0 for "Activity" category, 1 for "Hobby" category, 2 for "Social" category, 3 for "Entertainment" category and 4 for "Technical" category
 CATEGORY=-1 
 #Flag indicating whether we wish to evaluate only for new events; Set this to 1 if the evaluation has to be done only for new events 
@@ -47,7 +47,7 @@ else:
 		CATEGORY=int(sys.argv[5])
 		NEW_FLAG=int(sys.argv[6])
 	else:
-		print "Please provide all 8 arguments"
+		print "Please provide all 6 arguments"
 		exit(0)
 
 print "Parameters - Dropout, Minibatch Size, Learning Rate, Number of training Epochs, Group category, New Events Flag- ", DROP, BATCH_SIZE, LEARNING_RATE, TRAINING_ITERATION, CATEGORY, NEW_FLAG
@@ -84,9 +84,9 @@ def check_new_ven(grp_event, event, grp,edata,etime):
 	return flag
 
 
-def read_input():
+def read_input(gcat):
 	#Read events fromt the input file
-	f=open('selected_events_new.txt','r')
+	f=open('./../data/sampled_events.txt','r')
 	all_event=set()  
 
 	for lin in f:
@@ -114,7 +114,7 @@ def read_input():
 print "Reading input files initiated ..."
 
 #Reading venue representation 
-venue_vec1=pickle.load(open('./../venue_vec2','rb'))
+venue_vec1=pickle.load(open('./../data/venue_vec2','rb'))
 
 venue_vec={}
 for v in venue_vec1:
@@ -125,37 +125,35 @@ for v in venue_vec1:
 		else:
 			venue_vec[v].append([0.0]*VEC_DIM)
 
+
 #Reading event representation			
-event_vec=pickle.load(open('./../event_vec2','rb'))
+event_vec=pickle.load(open('./../data/event_vec2','rb'))
+
 lvenue_vec=len(venue_vec)
 levent_vec=len(event_vec)
 
 #Read the hosting time of each event		
-etime = pickle.load(open('./../../RecVen_LSTM/input/etime','r'))
+etime = pickle.load(open('./../data/etime','r'))
 
 #Read the event to group mapping for each event
-egroup = pickle.load(open('./../../RecVen_LSTM/input/egroup','r'))
+egroup = pickle.load(open('./../data/egroup','r'))
 
 #Read the events hosted by each group
-infile = open('./../../RecVen_LSTM/input/grp_event.txt','r')
-grp_event={}
-for line in infile:
-	line=(line.strip()).split()
-	grp_event[int(line[0])]=set()
-	for e in range(1,len(line)):
-		grp_event[int(line[0])].add(line[e])
-infile.close()         
-
-#Read all events as input from "selected_events_new.txt". The "all_event" list has details of 1866 events, format of each element (event_id, group_id, venue_id, event_time, event_success_label, event_host_id)	
-all_events=read_input()		
+grp_event = pickle.load(open('./../data/grp_event','r'))	
 
 #Read the event to venue mapping
-edata=pickle.load(open('./../../RecVen_LSTM/input/edata','r'))
+edata=pickle.load(open('./../data/edata','r'))
 
 #Read success values of events; Estimate the 66.67th percentile of the success values.
-infile = open('./../../RecVen_LSTM/input/sou_eventatt_grpsize_ratio.pickle','r')
-e_succ = pickle.load(infile)
-infile.close()
+e_succ = pickle.load(open('./../data/e_succ','r'))
+
+#Read the group category for each group
+gcat = pickle.load(open('./../data/grp_cat','r'))
+
+
+#Read all events as input from "selected_events_new.txt". The "all_event" list has details of 1866 events, format of each element (event_id, group_id, venue_id, event_time, event_success_label, event_host_id)	
+all_events=read_input(gcat)	
+
 evals=[]
 for ev in e_succ:
 	evals.append(e_succ[ev])
@@ -164,40 +162,6 @@ thres=evals[int((2.0*float(len(evals)))/3.0)]
 
 print "Reading input files done"
 
-'''
-ctt1=0
-ctt0=0
-lab0=[]
-lab1=[]
-for e in all_events:
-	if e in event_vec and e in edata and edata[e] != None and int(edata[e]) in venue_vec and e in e_succ:
-		if e_succ[e]<thres:
-		    ctt0+=1
-		    lab0.append((e,edata[e],0))
-		else:
-		    ctt1+=1
-		    lab1.append((e,edata[e],0))
-print "Number of Unsuccessful and Successful events in the dataset - ", ctt0,ctt1
-
-#Find minimum of both
-mm=min(ctt0,ctt1)
-
-if ctt0 < ctt1:
-	lab1=random.sample(lab1,mm)
-else:	
-	lab0=random.sample(lab0,mm)
-		
-lab=lab0+lab1
-print "Overall number of events for training and testing- ",len(lab)
-lab2=[]
-for e,v,lb in lab:
-	if e in event_vec and v in venue_vec:
-		lab2.append((e,v,lb))
-lab=lab2	
-	
-#Randomly shuffle the events 
-random.shuffle(lab)
-'''
 lab=[]
 ctt1=0
 ctt0=0
@@ -218,12 +182,13 @@ for e in all_events:
     if e in e_succ and e in event_vec and e in edata and edata[e] != None and int(edata[e]) in venue_vec:    
         if e_succ[e]<thres:
             ctt0+=1
-            if ctt0<=ct:
-                lab.append((e,edata[e],0))
+            if (ct>=200 and ctt0<=ct) or ct<200:
+		        lab.append((e,edata[e],0))
+		       
         if e_succ[e]>=thres:
             ctt1+=1
-            if ctt1<=ct:
-                lab.append((e,edata[e],1))
+            if (ct>=200 and ctt1<=ct) or ct<200:
+		        lab.append((e,edata[e],1))
 
 lab2=[]
 for e,v,lb in lab:
@@ -233,7 +198,7 @@ lab=lab2
 random.shuffle(lab)
 
 print "Overall number of events for training and testing- ",len(lab)
-print ('Finished Ground Truth Generation')
+print "Finished Ground Truth Generation"
 
 
 
@@ -479,6 +444,9 @@ while start<int(len(lab)):
 end_time=time.time()  
 
 cc=count
-print "Event Count, Recall@1, Recall@5, Recall@10, Recall@15, Recall@20, Recall@50, Recall@100, MIR ", cc, float(r1)/float(cc),float(r5)/float(cc),float(r10)/float(cc),float(r15)/float(cc),float(r20)/float(cc),float(r50)/float(cc),float(r100)/float(cc), MIR/float(cc)	
+if cc==0 and NEW_FLAG==1:
+	print "No new venues in the test set. Please try again. "
+else:	
+	print "Event Count, Recall@1, Recall@5, Recall@10, Recall@15, Recall@20, Recall@50, Recall@100, MIR ", cc, float(r1)/float(cc),float(r5)/float(cc),float(r10)/float(cc),float(r15)/float(cc),float(r20)/float(cc),float(r50)/float(cc),float(r100)/float(cc), MIR/float(cc)	
 
-print "\n\nTime taken per event in seconds ",float(end_time-start_time)/float(count)	  
+	print "\n\nTime taken per event in seconds ",float(end_time-start_time)/float(count)	  
